@@ -1,28 +1,38 @@
-// app/components/VideoPreview.tsx
-'use client'
+// components/VideoPreview.tsx
 
-import dynamic from 'next/dynamic'
-import 'plyr-react/plyr.css'
+'use client';
 
-const Plyr = dynamic(() => import('plyr-react'), { ssr: false })
+import dynamic from 'next/dynamic';
+import React from 'react';
+import 'plyr-react/plyr.css';
+
+const Plyr = dynamic(() => import('plyr-react'), { ssr: false });
 
 interface VideoPreviewProps {
-  videoUrl: string
-  poster?: string
+  videoUrl: string;
 }
 
-export default function VideoPreview({ videoUrl, poster }: VideoPreviewProps) {
-  const source = {
-    type: 'video',
-    title: 'Video',
-    sources: [
-      {
-        src: videoUrl,
-        type: 'video/mp4',
-      },
-    ],
-    poster,
-  }
+const VideoPreview: React.FC<VideoPreviewProps> = ({ videoUrl }) => {
+  const plyrProps = {
+    source: {
+      type: 'video',
+      sources: [
+        {
+          src: videoUrl,
+          provider: 'html5',
+        },
+      ],
+    },
+    options: {
+      controls: ['play', 'progress', 'volume', 'fullscreen'],
+    },
+  };
 
-  return <Plyr source={source} />
-}
+  return (
+    <div className="video-wrapper">
+      <Plyr {...plyrProps} />
+    </div>
+  );
+};
+
+export default VideoPreview;
