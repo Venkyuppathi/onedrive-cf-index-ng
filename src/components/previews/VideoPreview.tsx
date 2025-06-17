@@ -1,3 +1,4 @@
+'use client'
 import type { OdFileObject } from '../../types'
 
 import { FC, useEffect, useState } from 'react'
@@ -19,9 +20,7 @@ import FourOhFour from '../FourOhFour'
 import Loading from '../Loading'
 import CustomEmbedLinkMenu from '../CustomEmbedLinkMenu'
 
-import 'plyr-react/plyr.css'
-
-// ⚠ Dynamic import of Plyr to avoid SSR error
+// ✅ Import CSS conditionally in client-only useEffect
 const Plyr = dynamic(() => import('plyr-react'), { ssr: false })
 
 const VideoPlayer: FC<{
@@ -35,6 +34,9 @@ const VideoPlayer: FC<{
   mpegts: any
 }> = ({ videoName, videoUrl, width, height, thumbnail, subtitle, isFlv, mpegts }) => {
   useEffect(() => {
+    // ✅ Load plyr CSS only on the client
+    import('plyr-react/plyr.css')
+
     axios
       .get(subtitle, { responseType: 'blob' })
       .then(resp => {
