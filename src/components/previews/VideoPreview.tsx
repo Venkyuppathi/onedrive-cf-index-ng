@@ -4,7 +4,6 @@
 
 import dynamic from 'next/dynamic';
 import React from 'react';
-import 'plyr-react/plyr.css';
 
 const Plyr = dynamic(() => import('plyr-react'), { ssr: false });
 
