@@ -1,5 +1,7 @@
 // components/FileListing.tsx
 
+'use client';
+
 import type { OdFileObject, OdFolderChildren, OdFolderObject } from '../types'
 import { ParsedUrlQuery } from 'querystring'
 import { FC, MouseEventHandler, SetStateAction, useEffect, useRef, useState } from 'react'
@@ -31,17 +33,19 @@ import MarkdownPreview from './previews/MarkdownPreview'
 import CodePreview from './previews/CodePreview'
 import OfficePreview from './previews/OfficePreview'
 import AudioPreview from './previews/AudioPreview'
-import VideoPreview from './previews/VideoPreview'
 import PDFPreview from './previews/PDFPreview'
 import URLPreview from './previews/URLPreview'
 import ImagePreview from './previews/ImagePreview'
 import DefaultPreview from './previews/DefaultPreview'
 import { PreviewContainer } from './previews/Containers'
+import VideoPreview from './VideoPreview'
 
 import FolderListLayout from './FolderListLayout'
 import FolderGridLayout from './FolderGridLayout'
 
-const EPUBPreview = dynamic(() => import('./previews/EPUBPreview'), { ssr: false })
+const EPUBPreview = dynamic(() => import('./previews/EPUBPreview'), {
+  ssr: false,
+})
 
 const queryToPath = (query?: ParsedUrlQuery) => {
   if (query) {
@@ -134,10 +138,17 @@ export const Downloading: FC<{ title: string; style: string }> = ({ title, style
 }
 
 const FileListing: FC<{ query?: ParsedUrlQuery }> = ({ query }) => {
+  const [selected, setSelected] = useState<{ [key: string]: boolean }>({})
+  const [totalSelected, setTotalSelected] = useState<0 | 1 | 2>(0)
+  const [totalGenerating, setTotalGenerating] = useState<boolean>(false)
+  const [folderGenerating, setFolderGenerating] = useState<{ [key: string]: boolean }>({})
+
   const router = useRouter()
-  const path = queryToPath(query)
   const hashedToken = getStoredToken(router.asPath)
-  const { data, error } = useProtectedSWRInfinite(path)
+  const [layout, _] = useLocalStorage('preferredLayout', layouts[0])
+
+  const path = queryToPath(query)
+  const { data, error, size, setSize } = useProtectedSWRInfinite(path)
 
   if (error) {
     if (error.status === 403) {
@@ -150,7 +161,6 @@ const FileListing: FC<{ query?: ParsedUrlQuery }> = ({ query }) => {
       </PreviewContainer>
     )
   }
-
   if (!data) {
     return (
       <PreviewContainer>
@@ -159,8 +169,7 @@ const FileListing: FC<{ query?: ParsedUrlQuery }> = ({ query }) => {
     )
   }
 
-  const responses: any[] = [].concat(...data)
-
+  const responses: any[] = data ? [].concat(...data) : []
   if ('file' in responses[0] && responses.length === 1) {
     const file = responses[0].file as OdFileObject
     const previewType = getPreviewType(getExtension(file.name), { video: Boolean(file.video) })
@@ -176,7 +185,11 @@ const FileListing: FC<{ query?: ParsedUrlQuery }> = ({ query }) => {
         case preview.markdown:
           return <MarkdownPreview file={file} path={path} />
         case preview.video:
-          return <VideoPreview videoUrl={file.downloadUrl} />
+          return (
+            <VideoPreview
+              videoUrl={`/api/raw?path=${path}${hashedToken ? `&odpt=${hashedToken}` : ''}`}
+            />
+          )
         case preview.audio:
           return <AudioPreview file={file} />
         case preview.pdf:
@@ -202,4 +215,4 @@ const FileListing: FC<{ query?: ParsedUrlQuery }> = ({ query }) => {
   )
 }
 
-export default FileListing;
+export default FileListing
