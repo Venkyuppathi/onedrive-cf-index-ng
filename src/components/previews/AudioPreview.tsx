@@ -1,9 +1,12 @@
-import type { OdFileObject } from '../../types'
-import { FC, useEffect, useRef, useState } from 'react'
+'use client'
 
+import type { FC } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import type { OdFileObject } from '../../types'
+
+import { useRouter } from 'next/router'
 import ReactAudioPlayer from 'react-audio-player'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { useRouter } from 'next/router'
 
 import DownloadButtonGroup from '../DownloadBtnGtoup'
 import { DownloadBtnContainer, PreviewContainer } from './Containers'
@@ -18,34 +21,34 @@ enum PlayerState {
   Paused,
 }
 
-const AudioPreview: FC<{ file: OdFileObject }> = ({ file }) => {
+interface AudioPreviewProps {
+  file: OdFileObject
+}
+
+const AudioPreview: FC<AudioPreviewProps> = ({ file }) => {
   const { asPath } = useRouter()
   const hashedToken = getStoredToken(asPath)
+  const audioSrc = `/api/raw?path=${asPath}${hashedToken ? `&odpt=${hashedToken}` : ''}`
+  const thumbnail = `/api/thumbnail?path=${asPath}&size=medium${hashedToken ? `&odpt=${hashedToken}` : ''}`
 
   const rapRef = useRef<ReactAudioPlayer>(null)
   const [playerStatus, setPlayerStatus] = useState(PlayerState.Loading)
   const [playerVolume, setPlayerVolume] = useState(1)
-
-  // Render audio thumbnail, and also check for broken thumbnails
-  const thumbnail = `/api/thumbnail?path=${asPath}&size=medium${hashedToken ? `&odpt=${hashedToken}` : ''}`
   const [brokenThumbnail, setBrokenThumbnail] = useState(false)
 
   useEffect(() => {
-    // Manually get the HTML audio element and set onplaying event.
-    // - As the default event callbacks provided by the React component does not guarantee playing state to be set
-    // - properly when the user seeks through the timeline or the audio is buffered.
-    const rap = rapRef.current?.audioEl.current
-    if (rap) {
-      rap.oncanplay = () => setPlayerStatus(PlayerState.Ready)
-      rap.onended = () => setPlayerStatus(PlayerState.Paused)
-      rap.onpause = () => setPlayerStatus(PlayerState.Paused)
-      rap.onplay = () => setPlayerStatus(PlayerState.Playing)
-      rap.onplaying = () => setPlayerStatus(PlayerState.Playing)
-      rap.onseeking = () => setPlayerStatus(PlayerState.Loading)
-      rap.onwaiting = () => setPlayerStatus(PlayerState.Loading)
-      rap.onerror = () => setPlayerStatus(PlayerState.Paused)
-      rap.onvolumechange = () => setPlayerVolume(rap.volume)
-    }
+    const audio = rapRef.current?.audioEl.current
+    if (!audio) return
+
+    audio.oncanplay = () => setPlayerStatus(PlayerState.Ready)
+    audio.onended = () => setPlayerStatus(PlayerState.Paused)
+    audio.onpause = () => setPlayerStatus(PlayerState.Paused)
+    audio.onplay = () => setPlayerStatus(PlayerState.Playing)
+    audio.onplaying = () => setPlayerStatus(PlayerState.Playing)
+    audio.onseeking = () => setPlayerStatus(PlayerState.Loading)
+    audio.onwaiting = () => setPlayerStatus(PlayerState.Loading)
+    audio.onerror = () => setPlayerStatus(PlayerState.Paused)
+    audio.onvolumechange = () => setPlayerVolume(audio.volume)
   }, [])
 
   return (
@@ -55,9 +58,7 @@ const AudioPreview: FC<{ file: OdFileObject }> = ({ file }) => {
           <div className="relative flex aspect-square w-full items-center justify-center rounded bg-gray-100 transition-all duration-75 dark:bg-gray-700 md:w-48">
             <div
               className={`absolute z-20 flex h-full w-full items-center justify-center transition-all duration-300 ${
-                playerStatus === PlayerState.Loading
-                  ? 'bg-white opacity-80 dark:bg-gray-800'
-                  : 'bg-transparent opacity-0'
+                playerStatus === PlayerState.Loading ? 'bg-white opacity-80 dark:bg-gray-800' : 'bg-transparent opacity-0'
               }`}
             >
               <LoadingIcon className="z-10 inline-block h-5 w-5 animate-spin" />
@@ -65,7 +66,6 @@ const AudioPreview: FC<{ file: OdFileObject }> = ({ file }) => {
 
             {!brokenThumbnail ? (
               <div className="absolute m-4 aspect-square rounded-full shadow-lg">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   className={`h-full w-full rounded-full object-cover object-top ${
                     playerStatus === PlayerState.Playing ? 'animate-spin-slow' : ''
@@ -88,13 +88,13 @@ const AudioPreview: FC<{ file: OdFileObject }> = ({ file }) => {
             <div>
               <div className="mb-2 font-medium">{file.name}</div>
               <div className="mb-4 text-sm text-gray-500">
-                {'Last modified:' + ' ' + formatModifiedDateTime(file.lastModifiedDateTime)}
+                {'Last modified: ' + formatModifiedDateTime(file.lastModifiedDateTime)}
               </div>
             </div>
 
             <ReactAudioPlayer
               className="h-11 w-full"
-              src={`/api/raw?path=${asPath}${hashedToken ? `&odpt=${hashedToken}` : ''}`}
+              src={audioSrc}
               ref={rapRef}
               controls
               preload="auto"
