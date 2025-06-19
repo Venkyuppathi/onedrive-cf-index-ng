@@ -1,41 +1,47 @@
 'use client'
 
-import React from 'react'
-import dynamic from 'next/dynamic'
 import type { FC } from 'react'
 import type { OdFileObject } from '../../types'
+import { useRouter } from 'next/router'
+import DownloadButtonGroup from '../DownloadBtnGtoup'
+import { DownloadBtnContainer, PreviewContainer } from './Containers'
+import { formatModifiedDateTime } from '../../utils/fileDetails'
+import { getStoredToken } from '../../utils/protectedRouteHandler'
 
-// Dynamically import plyr-react (no SSR)
-const Plyr = dynamic(() => import('plyr-react'), { ssr: false })
-
-interface VideoPreviewProps {
+export interface VideoPreviewProps {
   file: OdFileObject
 }
 
 const VideoPreview: FC<VideoPreviewProps> = ({ file }) => {
-  const videoUrl = `/api/raw?path=${encodeURIComponent(file.name)}`
-
-  const plyrProps = {
-    source: {
-      type: 'video',
-      title: file.name,
-      sources: [
-        {
-          src: videoUrl,
-          type: file?.mimeType || 'video/mp4',
-          provider: 'html5',
-        },
-      ],
-    },
-    options: {
-      controls: ['play', 'progress', 'current-time', 'mute', 'volume', 'settings', 'fullscreen'],
-    },
-  }
+  const { asPath } = useRouter()
+  const hashedToken = getStoredToken(asPath)
+  const videoUrl = `/api/raw?path=${asPath}${hashedToken ? `&odpt=${hashedToken}` : ''}`
 
   return (
-    <div className="video-wrapper px-2 py-4">
-      <Plyr {...plyrProps} />
-    </div>
+    <>
+      <PreviewContainer>
+        <div className="w-full">
+          <div className="mb-2 font-medium">{file.name}</div>
+          <div className="mb-4 text-sm text-gray-500">
+            Last modified: {formatModifiedDateTime(file.lastModifiedDateTime)}
+          </div>
+
+          <video
+            controls
+            className="w-full rounded"
+            preload="metadata"
+            poster={`/api/thumbnail?path=${asPath}&size=large${hashedToken ? `&odpt=${hashedToken}` : ''}`}
+          >
+            <source src={videoUrl} />
+            Your browser does not support the video tag.
+          </video>
+        </div>
+      </PreviewContainer>
+
+      <DownloadBtnContainer>
+        <DownloadButtonGroup />
+      </DownloadBtnContainer>
+    </>
   )
 }
 
